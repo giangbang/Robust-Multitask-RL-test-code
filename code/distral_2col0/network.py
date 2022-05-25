@@ -23,7 +23,7 @@ class DQN(nn.Module):
     Deep neural network with represents an agent.
     """
     def __init__(self, input_size, num_actions):
-        super(DQN, self).__init__()
+        super().__init__()
         self.linear1 = nn.Linear(input_size, 50)
         self.linear2 = nn.Linear(50, 50)
         self.head = nn.Linear(50, num_actions)
@@ -38,7 +38,7 @@ class PolicyNetwork(nn.Module):
     Deep neural network which represents policy network.
     """
     def __init__(self, input_size, num_actions):
-        super(PolicyNetwork, self).__init__()
+        super().__init__()
         self.linear1 = nn.Linear(input_size, 50)
         self.linear2 = nn.Linear(50, 50)
         self.head = nn.Linear(50, num_actions)
@@ -46,7 +46,9 @@ class PolicyNetwork(nn.Module):
     def forward(self, x):
         x = F.leaky_relu(self.linear1(x))
         x = F.leaky_relu(self.linear2(x))
-        return F.softmax(self.head(x))
+        x = self.head(x)
+        # print(x.shape)
+        return F.softmax(x)
 
 def select_action(state, policy, model, num_actions,
                     EPS_START, EPS_END, EPS_DECAY, steps_done, alpha, beta):
@@ -61,11 +63,11 @@ def select_action(state, policy, model, num_actions,
     #     return LongTensor([[random.randrange(num_actions)]])
 
 
-    
-    Q = model(Variable(state, volatile=True).type(FloatTensor))
-    pi0 = policy(Variable(state, volatile=True).type(FloatTensor))
-    # print(pi0.data.numpy())
-    V = torch.log((torch.pow(pi0, alpha) * torch.exp(beta * Q)).sum(1) ) / beta
+    with torch.no_grad():
+        Q = model(Variable(state).type(FloatTensor))
+        pi0 = policy(Variable(state).type(FloatTensor))
+        # print(pi0.data.numpy())
+        V = torch.log((torch.pow(pi0, alpha) * torch.exp(beta * Q)).sum(1) ) / beta
     
     #### FOUND ERROR: ( Q ) returns a tensor of nan at some point
     if np.isnan( Q.sum(1).data[0]) :
@@ -136,13 +138,14 @@ def optimize_model(policy, model, optimizer, memory, batch_size,
     next_state_values[non_final_mask] = torch.log(
         (torch.pow(policy(non_final_next_states), alpha)
         * (torch.exp(beta * model(non_final_next_states)) + 1e-16)).sum(1)) / beta
-    try:
-        np.isnan(next_state_values.sum().data[0])
-    except Exception:
-        print("next_state_values:", next_state_values)
-        print(policy(non_final_next_states))
-        print(torch.exp(beta * model(non_final_next_states)))
-        print(model(non_final_next_states))
+    # np.isnan(next_state_values.sum().data[0])
+    # try:
+    #     np.isnan(next_state_values.sum().data[0])
+    # except Exception:
+    #     print("next_state_values:", next_state_values)
+    #     print(policy(non_final_next_states))
+    #     print(torch.exp(beta * model(non_final_next_states)))
+    #     print(model(non_final_next_states))
 
     # Now, we don't want to mess up the loss with a volatile flag, so let's
     # clear it. After this, we'll just end up with a Variable that has
